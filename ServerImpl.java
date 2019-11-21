@@ -1,115 +1,168 @@
 import java.io.BufferedReader;
-import java.io.FileInputStream;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.StringTokenizer;
 
-public class ServerImpl extends UnicastRemoteObject implements RemOp{
-	
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+public class ServerImpl extends UnicastRemoteObject implements RemOp {
 
 	protected ServerImpl() throws RemoteException {
 		super();
+		
+	}
+	
+	
+	private int righeFile(String fileName) throws IOException {
+		
+		File file = new File(fileName);
+		
+		BufferedReader bd = new BufferedReader(new FileReader(file));
+		int count = 0;
+		while(bd.readLine()!= null) {
+			
+			count++;
+			
+		}
+		bd.close();
+		return count;
+		
+	}
+	@Override
+	public synchronized int conta_righe(String fileName, int numParole) throws FileNotFoundException, IOException {
+		File file;
+		int count = 0;
+		if(!(file = new File(fileName)).exists() || numParole < 0) {
+			
+			System.out.println("File non esistente o numero di parole negativo");
+			throw new RemoteException("File Non esistente");
+			
+		} else {
+			
+				if(!(Files.probeContentType(file.toPath()).equals("text/plain"))) {
+						
+						throw new RemoteException(file.getName()+" non è un file di testo");
+						
+					}else {
+				
+				BufferedReader rd = null;
+				 
+				rd = new BufferedReader(new FileReader(file));
+					
+				
+				 String line = null;
+				 
+					while((line = rd.readLine()) != null) {
+						 
+						 StringTokenizer tok = new StringTokenizer(line);
+						 if(tok.countTokens() >= numParole) {
+							 
+							 count++;
+							 
+						 }
+						 
+					 }
+				
+				 
+				
+				}
+			
+		}
+		return count;
+	}
+
+	@Override
+	public synchronized Esito elimina_riga(String fileName, int riga) throws IOException {
+		
+		File file;
+		int count = 0;
+		if(!((file = new File(fileName)).exists())) {
+			
+			throw new RemoteException("File Non esistente");
+			
+		}else if(!(Files.probeContentType(file.toPath()).equals("text/plain"))) {
+				
+				throw new RemoteException(file.getName()+" non è un file di testo");
+				
+			}else {
+		
+		
+		
+			count = 0;
+		
+		
+		
+		BufferedReader bd = null; PrintWriter bw = null;
+		File fileTemp = new File("temp.txt");
+		
+		bd = new BufferedReader(new FileReader(file));
+		bw = new PrintWriter(new FileWriter(fileTemp));
+		
+		
+		int rigaCor = 0;
+		String line;
+		
+		while((line = bd.readLine()) != null) {
+				count++;
+			if(count != riga) {
+					
+				bw.print(line+"\n");
+				rigaCor++;
+			}
+				
+		}
+		bw.flush();
+		bw.close();
+		if(count < riga) {
+			
+			throw new RemoteException("Numero riga troppo elevato");
+			
+		}
+		
+		file.delete();
+		fileTemp.renameTo(new File(fileName));
+		
+		
+		return new Esito(fileName,rigaCor);
+			}
+		
 	}
 	
 	public static void main(String args[]) {
-		final int REGISTRYPORT = 1099;//uso la porta di default
-		String registryHost = "localhost";
-		String serviceName = "OperazioniSuFile";
-		try
-		{ // Registrazione del servizio RMI
-		String completeName = "//" + registryHost +
-		":" + REGISTRYPORT + "/" + serviceName;
-		ServerImpl serverRMI = new ServerImpl();
 		
-		Naming.rebind (completeName, serverRMI);
-		} // try
-		catch (Exception e){ 
-			e.printStackTrace();
+		int port;
+		
+		if(args.length != 1) {
+			
+			System.out.println("Errore argomenti");
 			System.exit(1);
-			//bind fallito inutile tenere server attivo.
+			
+		}
+		
+		port = Integer.parseInt(args[0]);
+		String RegistryHost = "localhost";
+		String nomeServizio = "RemOp";
+		String nomeCompleto = "//"+RegistryHost+":"+port+"/"+nomeServizio;
+		
+		try {
+			ServerImpl serverRMI = new ServerImpl();
+			Naming.rebind(nomeCompleto, serverRMI);
+		} catch (RemoteException e) {
+			// TODO Da Gestire
+			e.printStackTrace();
+		} catch (MalformedURLException e) {
+			// TODO Da Gestire
+			e.printStackTrace();
 		}
 	}
 	
-	public synchronized int conta_righe(String nomeFileRemoto, int limiteInferioreParole) throws RemoteException
-	{
-		int ctr=0;
-		/*restituisce il numero delle righe che contengono un numero di
-		parole maggiore dell’intero inviato; in caso di errore, solleva
-		un’eccezione remota: ad esempio, se il file non è presente nel
-		sistema o non è un file testo*/
-		
-		//come verificare che sia un file di testo?
-		//forse readLine non va a buon fine?
-		
-		try {
-			String line;
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(nomeFileRemoto)));
-			
-			while((line=br.readLine())!=null) {
-				if(line.split(" ").length > limiteInferioreParole) ctr++;
-			}
-			
-			br.close();
-		}catch(FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-			throw new RemoteException();
-		}
-		catch(IOException ioe) {
-			//non e'file di testo?
-			throw new RemoteException();
-		}
-		return ctr;
-	}
-	
-	//da finire
-	public synchronized Esito elimina_riga(String nomeFileRemoto, int rigaDaEliminare) throws RemoteException
-	{
-		long numeroRighe;
-		/*
-		 • se il file esiste e se ha un numero di righe almeno pari all’intero
-inviato dal cliente, restituisce l’esito dell’operazione, ovvero il nome
-del file modificato e un intero corrispondente al numero di righe
-presenti nel file modificato
-In caso di errore, solleva un’eccezione remota: ad esempio, se il
-file non è presente nel sistema, se non è un file testo o se ha meno
-righe di quella della quale se ne richiede l’eliminazione.
-		*/
-		
-		try {
-			FileInputStream fis = new FileInputStream(nomeFileRemoto);
-			InputStreamReader isr =new InputStreamReader(fis);
-			BufferedReader br= new BufferedReader(isr);
-			
-			//come verificare che sia un file di testo?
-			
-			/*
-			 * a fine stream devo chiudere e riaprire il file
-			 * perche' IO pointer e' alla fine?
-			 * */
-			numeroRighe=br.lines().count();
-			if(rigaDaEliminare>numeroRighe) {
-				br.close();
-				throw new RemoteException();
-			}
-			
-		}
-		catch(FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-			throw new RemoteException();
-		}
-		catch(IOException ioe) {
-			ioe.printStackTrace();
-			throw new RemoteException();
-		}
-		return null;
-	}
-
 	
 }

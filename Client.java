@@ -1,82 +1,97 @@
-import java.io.*;
-import java.rmi.*;
-import java.util.StringTokenizer;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
 
 public class Client {
 	
-	public static void main(String args[]) throws IOException
-	{
-		String buffer, service, nomeFile=null;
-		int intero=-1;
-		Esito esito=null;
-		int intEsito=-1;
-		StringTokenizer strtk;
-		BufferedReader stdIn=new BufferedReader(new InputStreamReader(System.in));
-		final int REGISTRYPORT = 1099;
-		String registryHost = null;
-		String serviceName = "OperazioniSuFile";
+	public static void main (String args[]) {
+		
+		if(args.length != 2) {
+			
+			System.out.println("Errore argomenti");
+			System.exit(1);
+			
+		}
 		
 		
+		int port = Integer.parseInt(args[1]);
+		String RegistryHost = args[0];
+		String nomeServizio =  "RemOp";
 		
-		System.out.println("Specificare tipo di servizio   <C||E>  (<contaRighe||eliminaRighe>)"+'\n');
-
-		while((service=stdIn.readLine())!=null)
-		{
-			intero=-1;
-			buffer=null;
-			try {
-				if (args.length != 1)
-				{
-					System.out.println("Sintassi:...");
-					System.exit(1);
+		String nomeCompleto = "//"+RegistryHost+":"+port+"/"+nomeServizio;
+		RemOp serverRMI = null;
+		try {
+			
+			serverRMI = (RemOp) Naming.lookup(nomeCompleto);
+			
+		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+			
+			// TODO Da Gestire
+			e.printStackTrace();
+		}
+		
+		String optionString,fileName;
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Inserisci il nome del file remoto da modificare:");
+		try {
+			while((fileName = scan.nextLine()) != null) {
+				try {
+					
+						
+						
+						System.out.println("Opzioni:");
+						System.out.println("-Conta Righe (C)");
+						System.out.println("-Elimina righe (E)");
+						optionString = scan.nextLine();
+						if(optionString == null) System.exit(1);
+						switch (optionString) {
+						case "C":
+							int numP,count = 0;
+							System.out.println("Inserisci il numero di parole che devono avere le frasi");
+							numP = scan.nextInt();
+							scan.nextLine();
+							
+							count = serverRMI.conta_righe(fileName, numP);
+							
+						
+							System.out.println("Il file "+fileName+" contiene "+count+" righe con più di "+numP+" parole");
+							break;
+						case "E":
+							int numR;
+							Esito esito = null;
+							System.out.println("Inserisci il numero della riga da eliminare");
+							numR = scan.nextInt();
+							scan.nextLine();
+							
+							esito = serverRMI.elimina_riga(fileName, numR);
+							
+						
+							System.out.println(esito.toString());
+							break;
+						default:
+							System.out.println("Opzione inserita non esistente");
+							break;
+						
+						}
+					
+				} catch (RemoteException e) {
+					System.out.println(e.getLocalizedMessage());
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					System.out.println(e.getLocalizedMessage());
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					System.out.println(e.getLocalizedMessage());
 				}
-				registryHost = args[0];
+				System.out.println("Inserisci il nome del file remoto da modificare:");
 				
-				
-				// Connessione al servizio RMI remoto
-				String completeName = "//" + registryHost + ":" + REGISTRYPORT + "/" + serviceName;
-				ServerImpl serverRMI = (ServerImpl) Naming.lookup (completeName);
-				if(service.equalsIgnoreCase("C"))
-				{
-					System.out.println("Specificare nome del file e numero di parole nel formato <nomeFile,numeroParole>"+'\n');
-					buffer=stdIn.readLine();
-					strtk=new StringTokenizer(buffer,",");
-					nomeFile=strtk.nextToken();
-					intero=Integer.parseInt(strtk.nextToken());
-					
-					
-					intEsito=serverRMI.conta_righe(nomeFile, intero);
-					System.out.println("Richiesta: "+service+' '+nomeFile+' '+intero+'\n');
-					System.out.println("Esito: "+intEsito+" righe eliminate"+'\n');
-				}
-				else if(service.equalsIgnoreCase("E"))
-				{
-					System.out.println("Specificare nome del file e numero della riga <nomeFile,numeroRiga>"+'\n');
-					buffer=stdIn.readLine();
-					strtk=new StringTokenizer(buffer,",");
-					nomeFile=strtk.nextToken();
-					intero=Integer.parseInt(strtk.nextToken());
-					
-					esito=serverRMI.elimina_riga(nomeFile, intero);
-				}
-				else
-				{
-					System.out.println("Input non valido"+'\n');
-				}
 			}
-			catch(RemoteException r)
-			{
-				r.printStackTrace();
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-				System.out.println("Errore nella lettura dell input"+'\n');
-			}
-			
-			
-			
-			System.out.println("Specificare tipo di servizio   <C||E>  (<contaRighe||eliminaRighe>)"+'\n');
+		} catch (NoSuchElementException e) {
 			
 		}
 	}

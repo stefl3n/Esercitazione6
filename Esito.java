@@ -1,22 +1,42 @@
 import java.io.Serializable;
 
-public class Esito implements Serializable{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	
-	private String nomeFile;
-	private int numeroDiRighe;
-	
-	public Esito(String nomeFile, int numeroDiRighe) {
-		this.nomeFile=nomeFile;
-		this.numeroDiRighe=numeroDiRighe;
+/**
+ * 
+ */
+
+/**
+ * @author root
+ *
+ */
+public class Esito implements Serializable {
+	String fileName;
+	int righe;
+	public Esito(String fileName, int righe) {
+		
+		this.fileName = fileName;
+		this.righe = righe;
+		
+		
+	}
+	public String getFileName() {
+		return fileName;
+	}
+	private void setFileName(String fileName) {
+		this.fileName = fileName;
+	}
+	public int getRighe() {
+		return righe;
+	}
+	private void setRighe(int righe) {
+		this.righe = righe;
 	}
 	
-	public String getNomeFile(){return nomeFile;};
-	public int getNumeroDiRighe(){return numeroDiRighe;};
+	public String toString() {
+		
+		return fileName + " " + righe;
+		
+	}
 	
-	//public void setNomeFile(String nome) {nomeFile=nome;};
-	//public void setNumeroDiRighe(int numero) {numeroDiRighe=numero;};
+	
+	
 }
